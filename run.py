@@ -1,4 +1,6 @@
-from lenet import LeNet5
+from model.lenet import LeNet5
+from model.lenet import LeNet5N
+from model.alexnet import AlexNet
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -10,21 +12,43 @@ import onnx
 
 viz = visdom.Visdom()
 
-data_train = MNIST('./data/mnist',
+# 32 * 32 for LeNet5
+# data_train = MNIST('./data/mnist/lenet',
+#                    download=True,
+#                    transform=transforms.Compose([
+#                        transforms.Resize((32, 32)),
+#                        transforms.ToTensor()]))
+# data_test = MNIST('./data/mnist/lenet',
+#                   train=False,
+#                   download=True,
+#                   transform=transforms.Compose([
+#                       transforms.Resize((32, 32)),
+#                       transforms.ToTensor()]))
+
+# 224 * 224 for AlexNet
+data_train = MNIST('./data/mnist/alexnet',
                    download=True,
                    transform=transforms.Compose([
-                       transforms.Resize((32, 32)),
-                       transforms.ToTensor()]))
-data_test = MNIST('./data/mnist',
+                      transforms.Resize((224, 224)),
+                      transforms.ToTensor()
+                      ]))
+data_test = MNIST('./data/mnist/alexnet',
                   train=False,
                   download=True,
                   transform=transforms.Compose([
-                      transforms.Resize((32, 32)),
-                      transforms.ToTensor()]))
+                      transforms.Resize((224, 224)),
+                      transforms.ToTensor()
+                      ]))
+
 data_train_loader = DataLoader(data_train, batch_size=256, shuffle=True, num_workers=8)
 data_test_loader = DataLoader(data_test, batch_size=1024, num_workers=8)
 
-net = LeNet5()
+# net = LeNet5()
+# net = LeNet5N()
+net = AlexNet()
+
+modelName = "AlexNet.onnx"
+
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(net.parameters(), lr=2e-3)
 
@@ -37,6 +61,11 @@ cur_batch_win_opts = {
     'height': 600,
 }
 
+# move the input and model to GPU for speed if available
+if torch.cuda.is_available():
+    data_train_loader = data_train_loader.to('cuda')
+    data_test_loader = data_test_loader.to('cuda')
+    net.to('cuda')
 
 def train(epoch):
     global cur_batch_win
@@ -85,9 +114,9 @@ def train_and_test(epoch):
     test()
 
     dummy_input = torch.randn(1, 1, 32, 32, requires_grad=True)
-    torch.onnx.export(net, dummy_input, "lenet.onnx")
+    torch.onnx.export(net, dummy_input, modelName)
 
-    onnx_model = onnx.load("lenet.onnx")
+    onnx_model = onnx.load(modelName)
     onnx.checker.check_model(onnx_model)
 
 

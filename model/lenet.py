@@ -73,7 +73,7 @@ class F5(nn.Module):
         output = self.f5(img)
         return output
 
-
+# Format 1
 class LeNet5(nn.Module):
     """
     Input - 1x32x32
@@ -102,3 +102,69 @@ class LeNet5(nn.Module):
         output = self.f4(output)
         output = self.f5(output)
         return output
+
+# Format 2
+class LeNet5N(nn.Module):
+    """
+    Input - 1x32x32
+    Output - 10
+    """
+    def __init__(self, num_classes=10):
+        super(LeNet5N, self).__init__()
+        self.features1 = nn.Sequential(
+            nn.Conv2d(1, 6, kernel_size=5),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+        )
+        self.features2 = nn.Sequential(
+            nn.Conv2d(6, 16, kernel_size=5),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+        )
+        self.features3 = nn.Sequential(
+            nn.Conv2d(16, 120, kernel_size=5),
+            nn.ReLU(inplace=True),
+        )
+        self.classifier = nn.Sequential(
+            nn.Linear(120 * 1 * 1, 84),
+            nn.ReLU(inplace=True),
+            nn.Linear(84, num_classes),
+            nn.Softmax(dim=-1)
+        )
+
+    def forward(self, x):
+        x = self.features1(x)
+        out = self.features2(x)
+        x = self.features2(x)
+        x += out
+        x = self.features3(x)
+
+        x = x.view(x.size(0), 120 * 1 * 1)
+        x = self.classifier(x)
+        return x
+
+
+class LeNet2(nn.Module):
+    def __init__(self, num_classes=10):
+        super(LeNet2, self).__init__()
+        self.features = nn.Sequential(
+            nn.Conv2d(3, 6, 5),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),
+            nn.Conv2d(6, 16, 5),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2)
+        )
+        self.classifier = nn.Sequential(
+            nn.Linear(16*5*5, 120),
+            nn.ReLU(),
+            nn.Linear(120, 84),
+            nn.ReLU(),
+            nn.Linear(84, num_classes)
+        )
+
+    def forward(self, x):
+        x = self.features(x)
+        x = x.view(x.size()[0], -1)
+        x = self.classifier(x)
+        return x
